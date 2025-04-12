@@ -1,35 +1,60 @@
 using UnityEngine;
-using UnityEngine.Rendering;
 
 public class PlayerMovement : MonoBehaviour
 {
     private Rigidbody2D rb;
-    AudioSource audio;
+    private AudioSource audioSource;
+
     public float speed;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    private Vector3 originalScale;
+    public AudioClip stepSound; // <-- atribua esse no Inspector
+    private bool isWalking;
+
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
-        audio = GetComponent<AudioSource>();
+        audioSource = GetComponent<AudioSource>();
+        originalScale = transform.localScale;
     }
 
-    // Update is called once per frame
     void FixedUpdate()
     {
-        float moveHorizontal = Input.GetAxis("Horizontal");
-        float moveVertical = Input.GetAxis("Vertical");
+        float moveHorizontal = Input.GetAxisRaw("Horizontal");
+        float moveVertical = Input.GetAxisRaw("Vertical");
 
         Vector2 movement = new Vector2(moveHorizontal, moveVertical);
+        rb.linearVelocity = movement.normalized * speed;
 
-        rb.MovePosition(rb.position + movement.normalized * Time.fixedDeltaTime * speed);
+        // Virar personagem
+        if (moveHorizontal > 0)
+        {
+            transform.localScale = new Vector3(Mathf.Abs(originalScale.x), originalScale.y, originalScale.z);
+        }
+        else if (moveHorizontal < 0)
+        {
+            transform.localScale = new Vector3(-Mathf.Abs(originalScale.x), originalScale.y, originalScale.z);
+        }
+
+        // Tocar som de passos
+        if (movement.magnitude > 0.1f && !isWalking)
+        {
+            isWalking = true;
+            audioSource.PlayOneShot(stepSound);
+            Invoke("ResetStep", 0.3f); // ajusta o tempo do passo
+        }
+    }
+
+    void ResetStep()
+    {
+        isWalking = false;
     }
 
     private void OnTriggerEnter2D(Collider2D other)
     {
         if (other.tag == "Coletavel")
         {
-            audio.Play();
+            audioSource.Play();
             GameController.Collect();
             Destroy(other.gameObject);
         }
